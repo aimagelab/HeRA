@@ -13,7 +13,7 @@ This repository will contain the official implementation of the paper:
 ---
 
 <p><em>Overview of the proposed method.</em></p>
-<img src="assets/hera.jpg" alt="Method Overview" width="85%">
+<img src="assets/hera.svg" alt="Method Overview" width="85%">
 
 
 ---
