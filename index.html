@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HeRA — Head-Wise Representation Alignment for Multimodal LLMs</title>
+<meta name="description" content="HeRA: Topological Representation Alignment at the level of individual attention heads for Multimodal Large Language Models.">
+<meta name="author" content="Davide Caffagni, Alberto Compagnoni, Federico Melis, Sara Sarto, Pier Luigi Dovesi, Mark Granroth-Wilding, Marcella Cornia, Lorenzo Baraldi">
+
+<meta property="og:title" content="HeRA: Head-Wise Representation Alignment for Multimodal LLMs">
+<meta property="og:description" content="Mind the Heads — Topological Representation Alignment for Multimodal LLMs.">
+<meta property="og:type" content="article">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"
+    onload="renderMathInElement(document.body, { delimiters: [{left:'$$',right:'$$',display:true},{left:'\\(',right:'\\)',display:false},{left:'\\[',right:'\\]',display:true}], throwOnError:false });"></script>
+
+<link rel="stylesheet" href="assets/static/css/style.css">
+</head>
+<body>
+
+<!-- ============== TOP NAVBAR ============== -->
+<nav id="topnav">
+  <div class="nav-inner">
+    <a class="nav-logo" href="#"><span>He</span>RA</a>
+    <div class="nav-divider"></div>
+    <div class="nav-links">
+      <a class="nav-link" href="#abstract">Abstract</a>
+      <a class="nav-link" href="#contributions">Contributions</a>
+      <a class="nav-link" href="#method">Method</a>
+      <a class="nav-link" href="#results">Results</a>
+      <a class="nav-link" href="#qualitative">Qualitative</a>
+      <a class="nav-link" href="#bibtex">Citation</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ============== HERO ============== -->
+<header class="hero">
+    <div class="container">
+        <h1 class="title" data-reveal data-delay="1">
+            Mind the Heads: Topological Representation Alignment for Multimodal LLMs
+        </h1>
+        <p class="subtitle" data-reveal data-delay="2">
+            <strong><span class="ours">HeRA</span></strong> &mdash; <strong>He</strong>ad-Wise <strong>R</strong>epresentation <strong>A</strong>lignment
+        </p>
+
+        <div class="authors" data-reveal data-delay="3">
+            <span class="author"><strong>Davide Caffagni</strong><sup>&dagger;1</sup></span>
+            <span class="author"><strong>Alberto Compagnoni</strong><sup>&dagger;1,2</sup></span>
+            <span class="author"><strong>Federico Melis</strong><sup>&dagger;1</sup></span>
+            <span class="author"><strong>Sara Sarto</strong><sup>1</sup></span>
+            <br>
+            <span class="author"><strong>Pier Luigi Dovesi</strong><sup>3</sup></span>
+            <span class="author"><strong>Mark Granroth-Wilding</strong><sup>3</sup></span>
+            <span class="author"><strong>Marcella Cornia</strong><sup>1</sup></span>
+            <span class="author"><strong>Lorenzo Baraldi</strong><sup>1</sup></span>
+        </div>
+
+        <div class="affiliations" data-reveal data-delay="4">
+            <sup>1</sup>University of Modena and Reggio Emilia &nbsp;&middot;&nbsp;
+            <sup>2</sup>University of Pisa &nbsp;&middot;&nbsp;
+            <sup>3</sup>AMD Silo AI
+        </div>
+        <div class="equal-contrib" data-reveal data-delay="4"><sup>&dagger;</sup>Equal contribution</div>
+
+        <div class="actions" data-reveal data-delay="5">
+            <a class="btn secondary" href="https://arxiv.org/" target="_blank" rel="noopener">
+                <span class="icon">&#128196;</span> Paper
+            </a>
+            <a class="btn secondary" href="https://github.com/aimagelab/HeRA" target="_blank" rel="noopener">
+                <span class="icon">&#10094;/&#10095;</span> Code
+            </a>
+            <a class="btn secondary" href="https://huggingface.co/collections/aimagelab/hera" target="_blank" rel="noopener">
+                <span class="icon">&#129303;</span> Checkpoints
+            </a>
+            <a class="btn secondary" href="#bibtex">
+                <span class="icon">&#128221;</span> BibTeX
+            </a>
+        </div>
+    </div>
+</header>
+
+<!-- ============== TEASER ============== -->
+<section id="teaser">
+    <div class="container">
+        <div class="figure">
+            <img class="figure-img" data-reveal="scale" src="assets/static/images/teaser.svg" alt="HeRA teaser figure.">
+            <div class="figure-caption" data-reveal data-delay="1">
+                <strong>Figure 1.</strong> Standard representation alignment imposes strict vision&ndash;language feature matching (<em>left</em>), while
+                <strong>HeRA</strong> (<em>center</em>) matches cross-modal <em>local neighbors</em>, leading to superior VQA results (<em>right</em>).
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============== ABSTRACT ============== -->
+<section id="abstract">
+    <div class="container">
+        <h2 class="section-title" data-reveal>Abstract</h2>
+        <div class="abstract" data-reveal data-delay="1">
+            <p>
+                Representation alignment has emerged as an effective approach to improve Multimodal Large Language Models (MLLMs) by regularizing their internal representations toward those of an external vision encoder. However, existing methods typically align a fixed layer of the language backbone, overlooking the fine-grained structure of Transformer models. In this work, we propose
+                <strong>Head-Wise Representation Alignment (HeRA)</strong>, a method that enforces cross-modal alignment at the level of individual <em>attention heads</em>.
+                Our approach is grounded in the <em>Platonic Representation Hypothesis</em>, focusing on preserving the <em>topological structure</em> of representations (i.e., their local neighborhood relationships) across modalities. Following the Mutual K-Nearest Neighbor (MKNN) alignment metric, we introduce a contrastive objective that acts as a differentiable proxy for matching local structures. HeRA applies this objective during multimodal training to specific attention heads in the LLM, selected by their alignment score according to the MKNN metric. <strong>Counterintuitively, we find that aligning the <em>least</em> aligned heads yields the largest gains.</strong> Extensive evaluations across multiple MLLMs and 18 benchmarks demonstrate that HeRA consistently improves performance on challenging vision-centric tasks and serves as an effective regularizer against visual hallucinations by naturally curbing the over-reliance on linguistic priors.
+            </p>
+        </div>
+
+        <div class="tldr" data-reveal data-delay="2">
+            <strong>TL;DR.</strong> Instead of aligning a fixed LLM layer to vision features, <strong>HeRA</strong> aligns the <em>topology</em> (local neighborhoods) of a handful of <em>worst-aligned attention heads</em> with a frozen vision teacher via a contrastive loss. Consistent gains on vision-centric VQA and improved hallucination scores &mdash; on 9 LLMs from 3B to 14B.
+        </div>
+    </div>
+</section>
+
+<!-- ============== KEY CONTRIBUTIONS ============== -->
+<section id="contributions">
+    <div class="container">
+        <h2 class="section-title" data-reveal>Key Contributions</h2>
+        <div class="key-grid">
+            <div class="key-card" data-reveal data-delay="1">
+                <span class="badge">Granularity</span>
+                <h4>Head-Wise Alignment</h4>
+                <p>We move beyond fixed-layer alignment and intervene at the level of <em>individual attention heads</em>, an atomic unit that mitigates conflicts with the language modeling objective.</p>
+            </div>
+            <div class="key-card" data-reveal data-delay="2">
+                <span class="badge">Objective</span>
+                <h4>Topology, not Features</h4>
+                <p>A multi-target contrastive loss acts as a differentiable proxy for the MKNN metric, aligning the <em>local neighborhood structure</em> rather than enforcing rigid feature matching.</p>
+            </div>
+            <div class="key-card" data-reveal data-delay="3">
+                <span class="badge">Selection</span>
+                <h4>Pick the Worst Heads</h4>
+                <p>Counterintuitively, applying HeRA to the <em>least</em> aligned heads (ranked by MKNN before training) yields the largest gains &mdash; strengthening weak components while preserving aligned ones.</p>
+            </div>
+            <div class="key-card" data-reveal data-delay="4">
+                <span class="badge">Results</span>
+                <h4>Robust Gains, Less Hallucination</h4>
+                <p>Up to <strong>+3.6 pts</strong> on Vision-Centric benchmarks across 9 LLMs (3B&ndash;14B), with stable or improved General/Knowledge/OCR performance and reduced visual hallucinations.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============== METHOD ============== -->
+<section id="method">
+    <div class="container">
+        <h2 class="section-title" data-reveal>Method</h2>
+
+        <p class="lead" data-reveal data-delay="1">
+            HeRA augments the standard language-modeling objective with a contrastive head-level alignment loss that pushes the multimodal representation of an image&ndash;caption pair \((I_i, x_i)\), computed at a small set of selected attention heads, toward its \(k\)-nearest neighbors in the latent space of a frozen vision teacher.
+        </p>
+
+        <div class="figure">
+            <img class="figure-img" data-reveal="scale" src="assets/static/images/main_visual.svg" alt="HeRA method overview.">
+            <div class="figure-caption" data-reveal data-delay="1">
+                <strong>Figure 2. Overview of HeRA.</strong> Alongside the standard language modeling objective \(\mathcal{L}_{\text{LM}}\), HeRA employs a contrastive loss \(\mathcal{L}_{\text{HeRA}}\) to pull representations from selected LLM attention heads closer to their \(k\)-nearest neighbors (Top-\(k\)), computed in the latent space of a frozen teacher vision encoder.
+            </div>
+        </div>
+
+        <div class="method-grid">
+            <div class="method-card" data-reveal="left" data-delay="1">
+                <span class="step">1</span>
+                <h4>Topological Alignment via MKNN</h4>
+                <p>Grounded in the <em>Platonic Representation Hypothesis</em>, we measure cross-modal alignment with the <strong>Mutual K-Nearest Neighbor (MKNN)</strong> metric &mdash; the average intersection of the <em>k</em>-nearest neighbor sets induced by the LLM and the teacher vision encoder. MKNN captures <em>local</em> neighborhood agreement rather than global geometric matching.</p>
+            </div>
+            <div class="method-card" data-reveal="right" data-delay="2">
+                <span class="step">2</span>
+                <h4>Contrastive Proxy</h4>
+                <p>Since MKNN is non-differentiable, we use a multi-target <strong>InfoNCE</strong> loss as a differentiable proxy: for each batch element \(i\), the \(k\) visual nearest neighbors of the image \(I_i\) (in teacher space) become positives for the MLLM representation of \((I_i, x_i)\).</p>
+            </div>
+            <div class="method-card" data-reveal="left" data-delay="3">
+                <span class="step">3</span>
+                <h4>Head-Level Intervention</h4>
+                <p>We decompose multi-head attention along the rows of the output projection \(W_O\), isolating the contribution of each head <em>before</em> it is summed into the residual stream. This lets HeRA apply the contrastive objective to <em>individual heads</em>, the smallest meaningful unit of an LLM's reasoning machinery.</p>
+            </div>
+            <div class="method-card" data-reveal="right" data-delay="4">
+                <span class="step">4</span>
+                <h4>Selecting the Worst-5 Heads</h4>
+                <p>We rank all heads by their pre-training MKNN score against the vision teacher and pick the <strong>five least aligned heads</strong>. Empirically, aligning these heads boosts their alignment <em>without</em> degrading already-aligned ones &mdash; while aligning the top heads (already platonic) or random heads gives little benefit.</p>
+            </div>
+        </div>
+
+        <div class="figure">
+            <img class="figure-img" data-reveal="scale" src="assets/static/images/method.gif" alt="Per-head MKNN alignment animation.">
+            <div class="figure-caption" data-reveal data-delay="1">
+                <strong>Figure 3.</strong> The animation demonstrates the core mechanism of HeRA. Multimodal inputs from a batch are processed, and the visual data is passed through a frozen teacher vision encoder. This defines the local neighborhood structure in the teacher's latent space, serving as the target for HeRA's contrastive loss to align specific LLM attention heads.
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============== RESULTS ============== -->
+<section id="results">
+    <div class="container">
+        <h2 class="section-title" data-reveal>Results</h2>
+
+        <h3 class="subsection-title" data-reveal data-delay="1">Across 9 LLMs &middot; Vision-Centric Average</h3>
+        <p data-reveal data-delay="2">
+            HeRA delivers consistent improvements on the demanding <strong>Vision</strong> category of the Cambrian benchmark suite, scaling across architectural families (Vicuna, LLama3, Qwen2.5, Qwen3) and model sizes (3B&ndash;14B), while preserving or improving General / Knowledge / OCR performance.
+        </p>
+
+        <div class="table-wrap" data-reveal data-delay="3">
+            <table>
+                <caption><strong>Table 1.</strong> VQA results of HeRA on the LLaVA training recipe, across nine LLMs. &Delta; reports the change in the Vision average.</caption>
+                <thead>
+                    <tr>
+                        <th>Model</th>
+                        <th>General</th>
+                        <th>Knowledge</th>
+                        <th>OCR</th>
+                        <th>Vision</th>
+                        <th>&Delta; Vision</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>Qwen2.5-3B</td><td>73.5</td><td>46.7</td><td>42.2</td><td>50.5</td><td></td></tr>
+                    <tr class="ours-row"><td>+ HeRA</td><td><strong>74.5</strong></td><td><strong>47.5</strong></td><td><strong>43.8</strong></td><td><strong>52.9</strong></td><td><span class="delta-up">+2.4</span></td></tr>
+                    <tr><td>Qwen3-4B</td><td>75.6</td><td>49.6</td><td>43.8</td><td>56.3</td><td></td></tr>
+                    <tr class="ours-row"><td>+ HeRA</td><td><strong>76.0</strong></td><td><strong>50.1</strong></td><td><strong>44.5</strong></td><td><strong>58.5</strong></td><td><span class="delta-up">+2.2</span></td></tr>
+                    <tr><td>Vicuna-7B</td><td><strong>72.2</strong></td><td>44.3</td><td><strong>45.7</strong></td><td>49.7</td><td></td></tr>
+                    <tr class="ours-row"><td>+ HeRA</td><td>72.1</td><td><strong>44.5</strong></td><td><strong>45.7</strong></td><td><strong>52.0</strong></td><td><span class="delta-up">+2.3</span></td></tr>
+                    <tr><td>LLama3-8B</td><td>73.3</td><td>45.0</td><td>43.0</td><td>53.8</td><td></td></tr>
+                    <tr class="ours-row"><td>+ HeRA</td><td><strong>74.6</strong></td><td><strong>46.3</strong></td><td><strong>44.7</strong></td><td><strong>55.1</strong></td><td><span class="delta-up">+1.3</span></td></tr>
+                    <tr><td>Qwen2.5-7B</td><td>76.2</td><td>50.2</td><td>47.9</td><td>56.7</td><td></td></tr>
+                    <tr class="ours-row"><td>+ HeRA</td><td><strong>76.5</strong></td><td><strong>50.5</strong></td><td><strong>48.6</strong></td><td><strong>57.4</strong></td><td><span class="delta-up">+0.7</span></td></tr>
+                    <tr><td>Qwen3-8B</td><td>74.7</td><td>49.7</td><td>43.5</td><td>55.9</td><td></td></tr>
+                    <tr class="ours-row"><td>+ HeRA</td><td><strong>76.9</strong></td><td><strong>51.1</strong></td><td><strong>47.6</strong></td><td><strong>59.5</strong></td><td><span class="delta-up">+3.6</span></td></tr>
+                    <tr><td>Vicuna-13B</td><td>73.4</td><td>45.5</td><td><strong>47.7</strong></td><td>52.7</td><td></td></tr>
+                    <tr class="ours-row"><td>+ HeRA</td><td><strong>73.6</strong></td><td><strong>45.7</strong></td><td>47.6</td><td><strong>53.9</strong></td><td><span class="delta-up">+1.2</span></td></tr>
+                    <tr><td>Qwen2.5-14B</td><td>75.6</td><td>50.7</td><td>44.8</td><td>54.9</td><td></td></tr>
+                    <tr class="ours-row"><td>+ HeRA</td><td><strong>77.4</strong></td><td><strong>52.8</strong></td><td><strong>49.3</strong></td><td><strong>58.3</strong></td><td><span class="delta-up">+3.4</span></td></tr>
+                    <tr><td>Qwen3-14B</td><td>77.4</td><td><strong>52.8</strong></td><td>46.1</td><td>58.2</td><td></td></tr>
+                    <tr class="ours-row"><td>+ HeRA</td><td><strong>77.7</strong></td><td>52.6</td><td><strong>47.8</strong></td><td><strong>58.9</strong></td><td><span class="delta-up">+0.7</span></td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h3 class="subsection-title" data-reveal>Comparison with Representation Alignment Methods</h3>
+        <p data-reveal data-delay="1">
+            On Qwen3-8B, HeRA outperforms recent representation alignment strategies &mdash; including feature reconstruction (ROSS, JARVIS), middle-layer alignment (VIRAL), and global CKA-based alignment (CMAR) &mdash; with the highest gains on the demanding Vision category.
+        </p>
+
+        <div class="table-wrap" data-reveal data-delay="2">
+            <table>
+                <caption><strong>Table 2.</strong> VQA comparison of different representation alignment strategies for MLLMs.</caption>
+                <thead>
+                    <tr>
+                        <th>Alignment</th>
+                        <th>General</th>
+                        <th>Knowledge</th>
+                        <th>OCR</th>
+                        <th>Vision</th>
+                        <th>&Delta; Vision</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>&mdash; (LLaVA baseline)</td><td>74.7</td><td>49.7</td><td>43.5</td><td>55.9</td><td></td></tr>
+                    <tr><td>ROSS</td><td>74.6</td><td>49.4</td><td>44.0</td><td>56.2</td><td><span class="delta-up">+0.3</span></td></tr>
+                    <tr><td>VIRAL</td><td>73.8</td><td>49.3</td><td>43.6</td><td>54.2</td><td><span class="delta-down">&minus;1.7</span></td></tr>
+                    <tr><td>JARVIS</td><td>76.8</td><td>49.9</td><td>46.2</td><td>58.7</td><td><span class="delta-up">+2.8</span></td></tr>
+                    <tr><td>CMAR</td><td>76.4</td><td>51.0</td><td>46.0</td><td>56.9</td><td><span class="delta-up">+1.0</span></td></tr>
+                    <tr class="ours-row"><td>HeRA (Ours)</td><td><strong>76.9</strong></td><td><strong>51.1</strong></td><td><strong>47.6</strong></td><td><strong>59.5</strong></td><td><span class="delta-up">+3.6</span></td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="figure">
+            <img class="figure-img" data-reveal="scale" src="assets/static/images/heads_competitor.svg" alt="Comparison of HeRA against competitors.">
+            <div class="figure-caption" data-reveal data-delay="1">
+                <strong>Figure 4.</strong> Comparison of MKNN scores of the Worst-5 and Top-5 heads after the second training stage performed with HeRA and our competitors (i.e. LLaVA, VIRAL, JARVIS, ROSS, CMAR).
+            </div>
+        </div>
+
+        <h3 class="subsection-title" data-reveal>Less Visual Hallucinations</h3>
+        <p data-reveal data-delay="1">
+            Although mitigating hallucinations is not an explicit objective, HeRA consistently reduces hallucination rates on <strong>CHAIR-MSCOCO</strong>, <strong>AMBER</strong> (generative &amp; discriminative), and <strong>HallusionBench</strong>, while preserving cognition/coverage scores. Aligning topology curbs over-reliance on linguistic priors.
+        </p>
+
+        <h3 class="subsection-title" data-reveal>Choice of the Vision Teacher</h3>
+        <p data-reveal data-delay="1">
+            Self-supervised teachers work best: <strong>DINOv2 / DINOv3</strong> deliver strong, consistent gains, while using SigLIP2 (the primary vision encoder) as teacher is mostly ineffective. Base-size DINOv2-B is already sufficient &mdash; scaling the teacher to 1B parameters gives no further benefit.
+        </p>
+
+        <div class="figure">
+            <img class="figure-img" data-reveal="scale" src="assets/static/images/vis_enc.svg" alt="Ablation on teacher vision encoders.">
+            <div class="figure-caption" data-reveal data-delay="1">
+                <strong>Figure 5.</strong> VQA results of HeRA with different teacher vision encoders.
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============== QUALITATIVE ============== -->
+<section id="qualitative">
+    <div class="container">
+        <h2 class="section-title" data-reveal>Qualitative Examples</h2>
+        <p data-reveal data-delay="1">
+            HeRA visibly improves visual grounding on fine-grained perception, counting, spatial reasoning, and dense scenes &mdash; reducing the model's tendency to fall back on linguistic priors.
+        </p>
+
+        <div class="figure">
+            <img class="figure-img" data-reveal="scale" src="assets/static/images/qual_hera.svg" alt="Qualitative comparisons.">
+            <div class="figure-caption" data-reveal data-delay="1">
+                <strong>Figure 6.</strong> Qualitative comparison of LLaVA, ROSS, and HeRA across Cambrian categories using Qwen3-8B and SigLIP2.
+            </div>
+        </div>
+
+        <div class="figure">
+            <img class="figure-img" data-reveal="scale" src="assets/static/images/qual_hera_2.svg" alt="Additional qualitative examples.">
+            <div class="figure-caption" data-reveal data-delay="1">
+                <strong>Figure 7.</strong> Failure cases of HeRA on VQA tasks.
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============== BIBTEX ============== -->
+<section id="bibtex">
+    <div class="container">
+        <h2 class="section-title" data-reveal>Citation</h2>
+        <div class="bibtex-wrap" data-reveal data-delay="1">
+            <button type="button" id="copy-bib" class="copy-btn">Copy</button>
+            <pre class="bibtex" id="bib">@article{caffagni2026hera,
+    title   = {{Mind the Heads: Topological Representation Alignment for Multimodal LLMs}},
+    author  = {Caffagni, Davide and Compagnoni, Alberto and Melis, Federico and
+                Sarto, Sara and Dovesi, Pier Luigi and Granroth-Wilding, Mark and
+                Cornia, Marcella and Baraldi, Lorenzo},
+    journal = {arXiv preprint},
+    year    = {2026}
+    }</pre>
+        </div>
+    </div>
+</section>
+
+<!-- ============== ACKNOWLEDGEMENTS ============== -->
+<section id="ack">
+    <div class="container">
+        <h2 class="section-title" data-reveal>Acknowledgments</h2>
+        <p data-reveal data-delay="1">
+            This work has been supported by the EU Horizon project <strong>ELLIOT</strong> (No. 101214398), by the EuroHPC JU project <strong>MINERVA</strong> (GA No. 101182737), and by the PNRR project <strong>ITSERR</strong> (CUP B53C22001770006) funded by the EU&nbsp;&mdash; NextGenerationEU. We also acknowledge EuroHPC JU for awarding the project EHPC-AIF-2025SC04-225 access to <strong>LUMI</strong> at CSC, Finland.
+        </p>
+    </div>
+</section>
+
+<footer>
+    <div class="container">
+        <p>
+            AImageLab &middot; University of Modena and Reggio Emilia
+        </p>
+    </div>
+</footer>
+
+
+<script>
+/* ---------- BibTeX copy button ---------- */
+(function () {
+  var btn = document.getElementById('copy-bib');
+  var src = document.getElementById('bib');
+  if (!btn || !src) return;
+  btn.addEventListener('click', function () {
+    var text = src.textContent;
+    var done = function () {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(function () { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+    };
+    var fail = function () {
+      btn.textContent = 'Press Ctrl+C';
+      setTimeout(function () { btn.textContent = 'Copy'; }, 1800);
+    };
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(done).catch(function () { fallbackCopy(text) ? done() : fail(); });
+    } else {
+      fallbackCopy(text) ? done() : fail();
+    }
+  });
+  function fallbackCopy(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;top:-1000px;left:0';
+    document.body.appendChild(ta);
+    ta.select();
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    return ok;
+  }
+})();
+
+(function () {
+  var revealEls = document.querySelectorAll('[data-reveal]');
+
+  if (!('IntersectionObserver' in window)) {
+    // Fallback: show everything immediately
+    revealEls.forEach(function (el) { el.classList.add('is-visible'); });
+    return;
+  }
+
+  var observer = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('is-visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, {
+    threshold: 0.08,
+    rootMargin: '0px 0px -40px 0px'
+  });
+
+  revealEls.forEach(function (el) { observer.observe(el); });
+})();
+
+(function () {
+  var nav      = document.getElementById('topnav');
+  var navLinks = document.querySelectorAll('.nav-link');
+  var sections = ['abstract','contributions','method','results','qualitative','bibtex']
+                  .map(function (id) { return document.getElementById(id); })
+                  .filter(Boolean);
+
+  // Shadow on scroll
+  window.addEventListener('scroll', function () {
+    if (window.scrollY > 10) {
+      nav.classList.add('scrolled');
+    } else {
+      nav.classList.remove('scrolled');
+    }
+    updateActive();
+  }, { passive: true });
+
+  // Smooth scroll + offset for fixed navbar
+  navLinks.forEach(function (link) {
+    link.addEventListener('click', function (e) {
+      var href = link.getAttribute('href');
+      if (href && href.startsWith('#')) {
+        var target = document.querySelector(href);
+        if (target) {
+          e.preventDefault();
+          var offset = 60;
+          var top = target.getBoundingClientRect().top + window.scrollY - offset;
+          window.scrollTo({ top: top, behavior: 'smooth' });
+        }
+      }
+    });
+  });
+
+  function updateActive() {
+    var scrollY = window.scrollY + 80;
+    var current = '';
+    sections.forEach(function (sec) {
+      if (sec.offsetTop <= scrollY) {
+        current = sec.id;
+      }
+    });
+    navLinks.forEach(function (link) {
+      var href = link.getAttribute('href').replace('#', '');
+      link.classList.toggle('active', href === current);
+    });
+  }
+
+  updateActive();
+})();
+</script>
+
+<style>
+.bibtex-wrap {
+  position: relative;
+}
+.copy-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
+}
+.bibtex {
+  padding: 15px;
+  padding-right: 60px;
+  background-color: #F2EFE7;
+  border-radius: 5px;
+  overflow-x: auto;
+}
+table th,
+table td {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  line-height: 1.2;
+}
+</style>
+</body>
+</html>
