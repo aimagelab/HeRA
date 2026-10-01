@@ -511,6 +511,53 @@ footer a {
 
 footer a:hover { text-decoration: underline; }
 
+.conference-announcement {
+    margin-top: 28px;
+}
+
+.conference-announcement + .actions {
+    margin-top: 28px;
+}
+
+.conference-banner {
+    display: inline-block;
+    font-weight: 700;
+    font-size: 1.7rem;
+    color: #7c3aed;
+}
+
+@supports ((background-clip: text) or (-webkit-background-clip: text)) {
+    .conference-banner {
+        background-image: linear-gradient(
+            110deg,
+            #7c3aed 46%,
+            #d8b4fe 49%,
+            #fff 50%,
+            #d8b4fe 51%,
+            #7c3aed 54%
+        );
+        background-size: 300% 100%;
+        background-position: 100% 0;
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: conference-shimmer 6s ease-in-out infinite;
+    }
+}
+
+@keyframes conference-shimmer {
+    0%, 63.333333% { background-position: 100% 0; }
+    100% { background-position: 0% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .conference-banner {
+        animation: none;
+        background-image: none;
+        -webkit-text-fill-color: currentColor;
+    }
+}
+
 /* ----------------- INLINE STYLES ----------------- */
 code.inline {
     background: var(--code-bg);
